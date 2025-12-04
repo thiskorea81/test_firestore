@@ -4,14 +4,13 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { LogOut, Send, BookOpen } from 'lucide-vue-next';
 
-// 하위 컴포넌트 임포트
+// 컴포넌트 임포트
 import TabMenu from './dashboard/TabMenu.vue';
 import ProfileCard from './dashboard/ProfileCard.vue';
 import AbsenceForm from './forms/AbsenceForm.vue';
 import StudentHistory from './dashboard/StudentHistory.vue';
-
-// [중요] 이름이 변경된 컴포넌트 임포트
-import ClassDocumentManager from './teacher/ClassDocumentManager.vue';
+import ClassDocumentManager from './teacher/ClassDocumentManager.vue'; // 교사 전용
+import ForceChangePassword from './dashboard/parts/ForceChangePassword.vue'; // 비밀번호 변경 모달
 
 const props = defineProps({
   user: { type: Object, required: true },
@@ -20,33 +19,36 @@ const props = defineProps({
 
 const activeTab = ref('profile');
 const safeRole = computed(() => props.userData?.role || 'unknown');
-
-// [상태] 수정할 데이터
 const editTargetData = ref(null);
+
+// [핵심] 비밀번호 변경 필요 여부 확인
+const showForcePasswordModal = computed(() => {
+  return props.userData?.mustChangePassword === true;
+});
 
 const handleLogout = async () => {
   if(confirm("로그아웃 하시겠습니까?")) await signOut(auth);
 };
 
-// 학생 히스토리에서 [수정] 버튼 클릭 시
 const handleEditRequest = (data) => {
   editTargetData.value = data;
-  if (data.type === '결석신고서') {
-    activeTab.value = 'absence'; // 작성 폼으로 이동
-  } else {
-    alert("현재 '결석신고서'만 수정 가능합니다.");
-  }
+  if (data.type === '결석신고서') activeTab.value = 'absence';
+  else alert("현재 '결석신고서'만 수정 가능합니다.");
 };
 
-// 폼 닫기 (저장 완료 or 취소)
 const handleFormClose = () => {
-  editTargetData.value = null; // 수정 데이터 초기화
-  activeTab.value = 'history'; // 목록으로 복귀
+  editTargetData.value = null;
+  activeTab.value = 'history';
 };
 </script>
 
 <template>
   <div class="dashboard-wrapper">
+    <ForceChangePassword 
+      v-if="showForcePasswordModal" 
+      :user="user" 
+    />
+
     <nav class="navbar">
       <div class="brand" @click="activeTab = 'profile'">
         <div class="logo">T</div><span>Teacher Diary</span>
@@ -69,7 +71,6 @@ const handleFormClose = () => {
       />
 
       <template v-if="safeRole !== 'teacher'">
-        
         <StudentHistory 
           v-if="activeTab === 'history'"
           :user="user"

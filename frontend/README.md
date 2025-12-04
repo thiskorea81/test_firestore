@@ -1,38 +1,63 @@
-# frontend
+# 🏫 Teacher Diary (티처 다이어리)
 
-This template should help get you started developing with Vue 3 in Vite.
+**학교 행정 업무의 디지털 전환, 학생-학부모-교사를 잇는 스마트 문서 관리 플랫폼**
 
-## Recommended IDE Setup
+> **Live Demo:** [https://glowing-narwhal-fd7b74.netlify.app/](https://glowing-narwhal-fd7b74.netlify.app/)
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## 📖 프로젝트 소개
+Teacher Diary는 종이로 처리되던 학교의 결석신고서, 체험학습신청서 등을 웹에서 작성하고 전자 결재할 수 있는 시스템입니다. 
+학생은 간편하게 신청서를 제출하고, 교사는 효율적으로 문서를 관리 및 인쇄할 수 있으며, 관리자는 학교 시스템 전반을 설정할 수 있습니다.
 
-## Recommended Browser Setup
+---
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+## ✨ 주요 기능 (Key Features)
 
-## Customize configuration
+### 👩‍🎓 학생/학부모 (Student & Parent)
+* **전자 문서 작성**: 결석신고서, 체험학습신청서 등을 모바일/PC에서 바로 작성.
+* **디지털 서명 (Canvas)**: 마우스나 터치를 이용해 학생 및 보호자 서명을 직접 입력.
+* **증빙 서류 첨부**: 진료확인서, 처방전 등의 사진을 카메라로 찍거나 업로드.
+* **스마트 결석 관리**: 
+    * 여학생의 경우 '인정결석(생리통)' 옵션 활성화.
+    * 월 1회 사용 여부를 자동 체크하여 초과 시 '질병결석'으로 자동 전환 안내.
+* **잔여 일수 확인**: 나의 남은 생리결석, 교외체험학습(국내/국외) 일수를 그래프로 직관적 확인.
+* **신청 현황 추적**: 제출한 문서의 진행 상태(진행중, 승인, 반려) 실시간 확인 및 수정/삭제.
+* **비밀번호 강제 변경**: 관리자가 일괄 등록한 계정은 최초 로그인 시 비밀번호 변경 강제.
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+### 🧑‍🏫 교사 (Teacher)
+* **학급 문서함**: 담당 학급 학생들이 제출한 문서를 최신순으로 조회 및 필터링.
+* **문서 검토 및 결재**:
+    * 제출된 문서의 내용을 확인하고 **승인** 또는 **반려** 처리.
+    * 승인 시 교사가 미리 등록한 **전자 도장(서명)**이 문서에 자동 날인됨.
+* **A4 최적화 인쇄 (Print System)**:
+    * 웹 화면과 분리된 **인쇄 전용 뷰** 제공.
+    * **결재 라인(담임-학년계-부장-교감-교장) 자동 생성** 및 전결 처리 표시.
+    * 증빙 서류(이미지)는 **자동으로 2페이지로 분리**되어 깔끔하게 출력.
 
-## Project Setup
+### 🛠 관리자 (Admin)
+* **사용자 일괄 등록 (CSV)**: 엑셀(CSV) 파일을 이용해 학생 및 교사 계정을 대량으로 생성.
+    * 초기 비밀번호 자동 부여 (학생: 123456, 교사: 654321).
+* **시스템 설정 관리**:
+    * 인정결석(생리통) 월 허용 횟수 조정.
+    * 국내/국외 체험학습 연간 허용 일수 조정.
+    * 학교 사정에 맞춰 **결재 라인(직책, 전결 여부)** 커스터마이징.
 
-```sh
-npm install
-```
+---
 
-### Compile and Hot-Reload for Development
+## 🛠 기술 스택 (Tech Stack)
 
-```sh
-npm run dev
-```
+### Frontend
+* **Framework**: Vue.js 3 (Composition API, `<script setup>`)
+* **Build Tool**: Vite
+* **State Management**: Pinia (사용자 정보, 시스템 설정, 문서 데이터 관리)
+* **Styling**: Scoped CSS (Custom Design, Responsive)
+* **Icons**: Lucide Vue Next
 
-### Compile and Minify for Production
+### Backend (Serverless)
+* **Platform**: Firebase v9 Modular SDK
+* **Authentication**: Firebase Auth (Email/Password)
+* **Database**: Cloud Firestore (NoSQL)
+* **Storage**: Firebase Storage (이미지/서명 파일 저장)
 
-```sh
-npm run build
-```
+---
+
+## 📂 폴더 구조 (Directory Structure)

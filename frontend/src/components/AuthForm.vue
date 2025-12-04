@@ -5,7 +5,7 @@ import {
   createUserWithEmailAndPassword, 
   updateProfile 
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db, getAppId } from '../firebase';
 import { 
   LogIn, UserPlus, GraduationCap, Baby, School, 
@@ -23,14 +23,10 @@ const role = ref('student');
 const grade = ref('');
 const cls = ref('');
 const num = ref('');
-const userPhone = ref(''); // 학생 본인 연락처
+const userPhone = ref('');
 const childName = ref('');
-
-// 학부모 정보
 const parentName = ref('');
 const parentPhone = ref('');
-
-// [추가] 성별 (기본값: male)
 const gender = ref('male');
 
 // UI 상태
@@ -56,7 +52,7 @@ const resetForm = () => {
   grade.value = ''; cls.value = ''; num.value = ''; 
   userPhone.value = ''; childName.value = '';
   parentName.value = ''; parentPhone.value = '';
-  gender.value = 'male'; // 성별 초기화
+  gender.value = 'male';
 };
 
 const toggleMode = () => {
@@ -76,72 +72,88 @@ const handleLogin = async () => {
 
 const handleSignUp = async () => {
   error.value = '';
+  // 기본 유효성 검사
   if (!name.value.trim()) { error.value = '이름을 입력해주세요.'; return; }
   
   if (role.value === 'student') {
-    if (!gender.value) { error.value = '성별을 선택해주세요.'; return; }
-    if (!grade.value || !cls.value || !num.value) { error.value = '학번 정보를 모두 입력해주세요.'; return; }
-    if (!userPhone.value) { error.value = '학생 연락처를 입력해주세요.'; return; }
-    if (!parentName.value || !parentPhone.value) { error.value = '보호자 성함과 연락처를 입력해주세요.'; return; }
-  
-  } else if (role.value === 'parent') {
-    if (!grade.value || !cls.value || !num.value) { error.value = '자녀 학번 정보를 입력해주세요.'; return; }
-    if (!childName.value) { error.value = '자녀 이름을 입력해주세요.'; return; }
+    if (!grade.value || !cls.value || !num.value) { error.value = '학번 정보를 입력해주세요.'; return; }
     if (!userPhone.value) { error.value = '연락처를 입력해주세요.'; return; }
+    if (!parentName.value || !parentPhone.value) { error.value = '보호자 정보를 입력해주세요.'; return; }
+  } else if (role.value === 'parent') {
+    if (!childName.value) { error.value = '자녀 이름을 입력해주세요.'; return; }
   }
 
   isSubmitting.value = true;
 
   try {
+    // [1] 관리자가 미리 등록한 대기 명단(pre_users) 확인
+    const preUserRef = doc(db, 'artifacts', appId, 'pre_users', email.value);
+    const preUserSnap = await getDoc(preUserRef);
+    const isPreRegistered = preUserSnap.exists();
+    const preData = isPreRegistered ? preUserSnap.data() : null;
+
+    // [2] Firebase Auth 계정 생성
     const userCredential = await createUserWithEmailAndPassword(auth, email.value, password.value);
     const newUser = userCredential.user;
-    await updateProfile(newUser, { displayName: name.value });
+    
+    // 이름 설정 (관리자 등록 정보가 있으면 우선 사용)
+    const finalName = preData?.name || name.value;
+    await updateProfile(newUser, { displayName: finalName });
 
-    const formattedGrade = String(grade.value);
-    const formattedCls = String(cls.value).padStart(2, '0');
-    const formattedNum = String(num.value).padStart(2, '0');
-    const studentId = `${formattedGrade}${formattedCls}${formattedNum}`;
-
+    // [3] DB에 저장할 프로필 데이터 구성
     let userProfile = {
-      name: name.value,
       email: email.value,
-      role: role.value,
+      name: finalName,
+      role: preData?.role || role.value, // 관리자 지정 역할 우선
       joinedAt: new Date().toISOString(),
+      // 관리자 등록 계정이면 비밀번호 변경 강제 플래그 설정
+      mustChangePassword: isPreRegistered ? true : false 
     };
 
-    if (role.value === 'student') {
+    // 역할별 데이터 병합
+    if (userProfile.role === 'student') {
+      const fGrade = preData?.grade || String(grade.value);
+      const fClass = preData?.class || String(cls.value).padStart(2,'0');
+      const fNum = preData?.number || String(num.value).padStart(2,'0');
+      
       userProfile = { 
         ...userProfile, 
-        studentId, 
-        grade: formattedGrade, 
-        class: formattedCls, 
-        number: formattedNum, 
+        studentId: preData?.studentId || `${fGrade}${fClass}${fNum}`,
+        grade: fGrade, 
+        class: fClass, 
+        number: fNum, 
         phone: userPhone.value,
-        parentName: parentName.value,
+        parentName: parentName.value, 
         parentPhone: parentPhone.value,
-        gender: gender.value // [저장] 성별 추가
+        gender: preData?.gender || gender.value 
       };
-    } else if (role.value === 'parent') {
+    } else if (userProfile.role === 'parent') {
       userProfile = { 
         ...userProfile, 
-        childStudentId: studentId, 
         childName: childName.value, 
         phone: userPhone.value 
       };
-    } else if (role.value === 'teacher') {
+    } else if (userProfile.role === 'teacher') {
       userProfile = { 
         ...userProfile, 
-        assignedGrade: formattedGrade, 
-        assignedClass: formattedCls 
+        assignedGrade: String(grade.value), 
+        assignedClass: String(cls.value).padStart(2,'0') 
       };
     }
 
+    // [4] 실제 사용자 DB(users)에 저장
     await setDoc(doc(db, 'artifacts', appId, 'users', newUser.uid, 'profile', 'info'), userProfile);
+
+    // [5] 대기 명단에서 삭제 (가입 처리 완료)
+    if (isPreRegistered) {
+      await deleteDoc(preUserRef);
+    }
     
     setSuccessMsg.value = '가입 완료! 잠시 후 로그인됩니다...';
-    setTimeout(() => { window.location.reload(); }, 1000);
+    setTimeout(() => { window.location.reload(); }, 1500);
 
   } catch (err) {
+    console.error(err);
     error.value = getKoreanErrorMessage(err.code);
     isSubmitting.value = false;
   }
@@ -196,6 +208,7 @@ const handleSignUp = async () => {
               <input type="number" v-model="cls" placeholder="반" />
               <input type="number" v-model="num" placeholder="번호" />
             </div>
+            
             <div class="icon-input mb-3">
               <Phone class="field-icon" />
               <input type="tel" v-model="userPhone" placeholder="학생 본인 연락처" />
@@ -216,7 +229,7 @@ const handleSignUp = async () => {
             <p class="sub-title">자녀 정보</p>
             <input type="text" v-model="childName" placeholder="자녀 이름" class="mb-2"/>
             <div class="row-inputs">
-              <input type="number" v-model="grade" placeholder="학년" />
+              <input type="number" v-model="grade" placeholder="자녀 학년" />
               <input type="number" v-model="cls" placeholder="반" />
               <input type="number" v-model="num" placeholder="번호" />
             </div>
@@ -304,8 +317,8 @@ input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1
 .mb-2 { margin-bottom: 0.5rem; }
 .mb-3 { margin-bottom: 0.75rem; }
 .mt-4 { margin-top: 1rem; }
-.btn-submit { width: 100%; padding: 0.75rem; background-color: #2563eb; color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: background-color 0.2s; }
-.btn-submit:hover:not(:disabled) { background-color: #1d4ed8; }
+.btn-submit { width: 100%; padding: 0.75rem; background-color: #2563eb; color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: background 0.2s; }
+.btn-submit:hover:not(:disabled) { background: #1d4ed8; }
 .btn-submit:disabled { opacity: 0.7; cursor: not-allowed; }
 .message { padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem; }
 .message.error { background: #fef2f2; color: #dc2626; }
@@ -316,10 +329,7 @@ input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1
 .form-footer { text-align: center; margin-top: 1.5rem; }
 .btn-link { background: none; border: none; color: #2563eb; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
 .btn-link:hover { text-decoration: underline; }
-
-/* 성별 선택 스타일 */
 .gender-box { display: flex; gap: 1rem; margin-bottom: 1rem; background: white; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid #c7d2fe; }
 .radio-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer; font-weight: 500; color: #3730a3; }
-
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>
