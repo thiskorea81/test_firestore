@@ -5,7 +5,7 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage"; // 추가됨
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCz0WEtpaoJSRTGCHyUdSg01w1zOYDdSZk",
+  apiKey: "YourApiKey",
   authDomain: "teacherdiary-f2ddb.firebaseapp.com",
   projectId: "teacherdiary-f2ddb",
   storageBucket: "teacherdiary-f2ddb.firebasestorage.app",
