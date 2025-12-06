@@ -2,23 +2,24 @@ import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage"; // 추가됨
+import { getStorage } from "firebase/storage";
 
+// 환경 변수에서 설정값 로드
 const firebaseConfig = {
-  apiKey: "YourApiKey",
-  authDomain: "teacherdiary-f2ddb.firebaseapp.com",
-  projectId: "teacherdiary-f2ddb",
-  storageBucket: "teacherdiary-f2ddb.firebasestorage.app",
-  messagingSenderId: "318404667697",
-  appId: "1:318404667697:web:5649d7d193340081572810",
-  measurementId: "G-KWQSVBFBYP"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app); // 추가됨
+const storage = getStorage(app);
 
 // 로컬 테스트용 ID 고정
 const getAppId = () => {

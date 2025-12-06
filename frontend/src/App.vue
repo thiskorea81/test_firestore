@@ -7,7 +7,7 @@ import { auth, db, getAppId } from './firebase';
 import LoadingSpinner from './components/LoadingSpinner.vue';
 import Dashboard from './components/Dashboard.vue';
 import AuthForm from './components/AuthForm.vue';
-import AdminDashboard from './components/admin/AdminDashboard.vue'; // [추가]
+import AdminDashboard from './components/admin/AdminDashboard.vue';
 
 const user = ref(null);
 const loading = ref(true);
@@ -20,18 +20,16 @@ onMounted(() => {
     
     if (currentUser) {
       try {
-        // 1. 프로필 정보 가져오기
-        const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'info');
+        // [중요] 경로 수정: users/{uid}
+        const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
           userData.value = docSnap.data();
         } else {
-          // 2. [예외처리] 만약 관리자 이메일이라면 강제로 admin 권한 부여 (초기 세팅용)
+          // 관리자 예외 처리 (필요시)
           if (currentUser.email === 'admin@admin.com') {
-             const adminData = { name: '관리자', email: currentUser.email, role: 'admin' };
-             userData.value = adminData;
-             // 필요하다면 여기서 DB에 admin 정보를 setDoc으로 저장해도 됨
+             userData.value = { name: '관리자', email: currentUser.email, role: 'admin' };
           } else {
              userData.value = { name: currentUser.displayName, email: currentUser.email, role: 'unknown' };
           }

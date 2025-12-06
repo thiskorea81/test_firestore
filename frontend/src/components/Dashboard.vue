@@ -9,8 +9,9 @@ import TabMenu from './dashboard/TabMenu.vue';
 import ProfileCard from './dashboard/ProfileCard.vue';
 import AbsenceForm from './forms/AbsenceForm.vue';
 import StudentHistory from './dashboard/StudentHistory.vue';
-import ClassDocumentManager from './teacher/ClassDocumentManager.vue'; // 교사 전용
-import ForceChangePassword from './dashboard/parts/ForceChangePassword.vue'; // 비밀번호 변경 모달
+import ClassDocumentManager from './teacher/ClassDocumentManager.vue';
+import ForceChangePassword from './dashboard/parts/ForceChangePassword.vue';
+import EditProfileModal from './dashboard/parts/EditProfileModal.vue';
 
 const props = defineProps({
   user: { type: Object, required: true },
@@ -21,10 +22,9 @@ const activeTab = ref('profile');
 const safeRole = computed(() => props.userData?.role || 'unknown');
 const editTargetData = ref(null);
 
-// [핵심] 비밀번호 변경 필요 여부 확인
-const showForcePasswordModal = computed(() => {
-  return props.userData?.mustChangePassword === true;
-});
+// [중요] 모달 표시 우선순위: 비밀번호 변경 > 정보 수정
+const showPasswordModal = computed(() => props.userData?.mustChangePassword === true);
+const showProfileModal = computed(() => props.userData?.isNewUser === true);
 
 const handleLogout = async () => {
   if(confirm("로그아웃 하시겠습니까?")) await signOut(auth);
@@ -44,9 +44,18 @@ const handleFormClose = () => {
 
 <template>
   <div class="dashboard-wrapper">
+    
     <ForceChangePassword 
-      v-if="showForcePasswordModal" 
+      v-if="showPasswordModal" 
       :user="user" 
+    />
+
+    <EditProfileModal 
+      v-if="!showPasswordModal && showProfileModal" 
+      :user="user" 
+      :userData="userData" 
+      :safeRole="safeRole" 
+      :forceOpen="true" 
     />
 
     <nav class="navbar">
@@ -59,42 +68,22 @@ const handleFormClose = () => {
     </nav>
 
     <main class="main-content">
-      <TabMenu 
-        v-model:activeTab="activeTab" 
-        :userRole="safeRole" 
-      />
+      <TabMenu v-model:activeTab="activeTab" :userRole="safeRole" />
 
-      <ProfileCard 
-        v-if="activeTab === 'profile'" 
-        :user="user" 
-        :userData="userData" 
-      />
+      <ProfileCard v-if="activeTab === 'profile'" :user="user" :userData="userData" />
 
       <template v-if="safeRole !== 'teacher'">
-        <StudentHistory 
-          v-if="activeTab === 'history'"
-          :user="user"
-          @edit="handleEditRequest"
-        />
-
+        <StudentHistory v-if="activeTab === 'history'" :user="user" @edit="handleEditRequest" />
         <AbsenceForm 
           v-if="activeTab === 'absence'" 
           :user="user" 
           :userData="userData" 
           :editData="editTargetData"
-          @close="handleFormClose"
-          @submitted="handleFormClose"
+          @close="handleFormClose" 
+          @submitted="handleFormClose" 
         />
-
-        <div v-if="activeTab === 'trip_app'" class="card placeholder">
-          <Send class="icon-lg text-blue-200" />
-          <h2>체험학습 신청서</h2><p>준비 중입니다.</p>
-        </div>
-
-        <div v-if="activeTab === 'trip_report'" class="card placeholder">
-          <BookOpen class="icon-lg text-green-200" />
-          <h2>체험학습 보고서</h2><p>준비 중입니다.</p>
-        </div>
+        <div v-if="activeTab === 'trip_app'" class="card placeholder"><Send class="icon-lg text-blue-200" /><h2>체험학습 신청서</h2><p>준비 중입니다.</p></div>
+        <div v-if="activeTab === 'trip_report'" class="card placeholder"><BookOpen class="icon-lg text-green-200" /><h2>체험학습 보고서</h2><p>준비 중입니다.</p></div>
       </template>
 
       <ClassDocumentManager 
