@@ -60,7 +60,7 @@ const handleFormClose = () => {
 
     <nav class="navbar">
       <div class="brand" @click="activeTab = 'profile'">
-        <div class="logo">T</div><span>Teacher Diary</span>
+        <div class="logo">T</div><span>출결도우미</span>
       </div>
       <button @click="handleLogout" class="btn-logout">
         <LogOut class="w-4 h-4 mr-1" /> 로그아웃
