@@ -1,3 +1,4 @@
+// 사용하지 않으나 혹시 모를 상황을 대비해 남겨둠.
 <script setup>
 import { Printer, X } from 'lucide-vue-next';
 import SignatureBlock from './common/SignatureBlock.vue'; // 결재란

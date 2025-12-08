@@ -13,8 +13,7 @@ export const useSystemStore = defineStore('system', () => {
       overseasTrip: 30
     },
     approvalLine: [
-      { role: '담임', label: '담임', isFinal: false },
-      { role: '학년계', label: '학년계', isFinal: false },
+      { role: '학년부계', label: '학년부계', isFinal: false },
       { role: '학생부계', label: '학생부계', isFinal: false },
       { role: '부장', label: '부장', isFinal: true },
       { role: '교감', label: '교감', isFinal: true },

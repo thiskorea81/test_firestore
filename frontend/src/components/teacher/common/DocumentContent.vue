@@ -37,19 +37,32 @@ const formatDate = (timestamp) => {
           <th>제출일</th>
           <td>{{ formatDate(doc.submittedAt) }}</td>
         </tr>
+        
+        <tr>
+          <th>구 분</th>
+          <td colspan="3">
+            <span class="font-bold text-gray-800">{{ doc.absenceDetail || '-' }}</span>
+          </td>
+        </tr>
+
         <tr>
           <th>결석 기간</th>
           <td colspan="3">
-            {{ doc.period?.start }} ~ {{ doc.period?.end }}
-            <span v-if="doc.period?.days" class="ml-2 font-bold text-blue-600">
-              (총 {{ doc.period.days }}일)
-            </span>
+            <div>
+              {{ doc.period?.start }} ~ {{ doc.period?.end }}
+              <span v-if="doc.period?.days" class="ml-2 font-bold text-blue-600">
+                (총 {{ doc.period.days }}일)
+              </span>
+            </div>
+            <div v-if="doc.period?.startPeriod" class="text-sm text-gray-500 mt-1">
+              ({{ doc.period.startPeriod }}교시 ~ {{ doc.period.endPeriod }}교시)
+            </div>
           </td>
         </tr>
         <tr>
           <th>증빙 종류</th>
           <td>{{ doc.proofDocType || '미지정' }}</td>
-          <th>보호자연락처</th>
+          <th>비상연락</th>
           <td>{{ doc.parentPhone || '-' }}</td>
         </tr>
         <tr>
@@ -62,7 +75,14 @@ const formatDate = (timestamp) => {
     <div class="section mt-6">
       <h4 class="section-title">사유 / 상세 내용</h4>
       <div class="reason-box">
-        {{ doc.reason }}
+        <div class="mb-2">
+          <span class="text-xs font-bold text-gray-500 block mb-1">[학생 사유]</span>
+          {{ doc.reason }}
+        </div>
+        <div v-if="doc.parentOpinion" class="mt-4 pt-4 border-t border-gray-200">
+          <span class="text-xs font-bold text-gray-500 block mb-1">[학부모 의견]</span>
+          {{ doc.parentOpinion }}
+        </div>
       </div>
     </div>
 
@@ -88,7 +108,7 @@ const formatDate = (timestamp) => {
     <div class="section mt-8 pt-6 border-t border-gray-100">
       <div class="grid grid-cols-2 gap-8">
         <div class="text-center">
-          <span class="block text-xs font-bold text-gray-400 mb-2 uppercase">Student Signature</span>
+          <span class="block text-xs font-bold text-gray-400 mb-2 uppercase">학생 서명</span>
           <div class="sig-box">
             <img v-if="doc.signatures?.studentSig" :src="doc.signatures?.studentSig" class="h-10 mx-auto" />
             <span v-else class="text-gray-300 text-sm">(서명 없음)</span>
@@ -96,7 +116,7 @@ const formatDate = (timestamp) => {
           <p class="text-sm font-bold text-gray-700 mt-2">{{ doc.studentName }}</p>
         </div>
         <div class="text-center">
-          <span class="block text-xs font-bold text-gray-400 mb-2 uppercase">Parent Signature</span>
+          <span class="block text-xs font-bold text-gray-400 mb-2 uppercase">학부모 서명</span>
           <div class="sig-box">
             <img v-if="doc.signatures?.parentSig" :src="doc.signatures?.parentSig" class="h-10 mx-auto" />
             <span v-else class="text-gray-300 text-sm">(서명 없음)</span>
