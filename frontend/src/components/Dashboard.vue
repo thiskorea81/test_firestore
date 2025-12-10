@@ -10,6 +10,8 @@ import ProfileCard from './dashboard/ProfileCard.vue';
 import AbsenceForm from './forms/AbsenceForm.vue';
 import StudentHistory from './dashboard/StudentHistory.vue';
 import ClassDocumentManager from './teacher/ClassDocumentManager.vue';
+import StudentManager from './teacher/StudentManager.vue';
+import TeacherSettings from './teacher/TeacherSettings.vue'; // [추가]
 import ForceChangePassword from './dashboard/parts/ForceChangePassword.vue';
 import EditProfileModal from './dashboard/parts/EditProfileModal.vue';
 
@@ -22,7 +24,6 @@ const activeTab = ref('profile');
 const safeRole = computed(() => props.userData?.role || 'unknown');
 const editTargetData = ref(null);
 
-// [중요] 모달 표시 우선순위: 비밀번호 변경 > 정보 수정
 const showPasswordModal = computed(() => props.userData?.mustChangePassword === true);
 const showProfileModal = computed(() => props.userData?.isNewUser === true);
 
@@ -44,23 +45,12 @@ const handleFormClose = () => {
 
 <template>
   <div class="dashboard-wrapper">
-    
-    <ForceChangePassword 
-      v-if="showPasswordModal" 
-      :user="user" 
-    />
-
-    <EditProfileModal 
-      v-if="!showPasswordModal && showProfileModal" 
-      :user="user" 
-      :userData="userData" 
-      :safeRole="safeRole" 
-      :forceOpen="true" 
-    />
+    <ForceChangePassword v-if="showPasswordModal" :user="user" />
+    <EditProfileModal v-if="!showPasswordModal && showProfileModal" :user="user" :userData="userData" :safeRole="safeRole" :forceOpen="true" />
 
     <nav class="navbar">
       <div class="brand" @click="activeTab = 'profile'">
-        <div class="logo">T</div><span>출결도우미</span>
+        <div class="logo">T</div><span>Teacher Diary</span>
       </div>
       <button @click="handleLogout" class="btn-logout">
         <LogOut class="w-4 h-4 mr-1" /> 로그아웃
@@ -68,33 +58,31 @@ const handleFormClose = () => {
     </nav>
 
     <main class="main-content">
-      <TabMenu v-model:activeTab="activeTab" :userRole="safeRole" />
+      <div class="mb-4">
+         <TabMenu v-model:activeTab="activeTab" :userRole="safeRole" />
+      </div>
 
       <ProfileCard v-if="activeTab === 'profile'" :user="user" :userData="userData" />
 
       <template v-if="safeRole !== 'teacher'">
         <StudentHistory v-if="activeTab === 'history'" :user="user" @edit="handleEditRequest" />
-        <AbsenceForm 
-          v-if="activeTab === 'absence'" 
-          :user="user" 
-          :userData="userData" 
-          :editData="editTargetData"
-          @close="handleFormClose" 
-          @submitted="handleFormClose" 
-        />
+        <AbsenceForm v-if="activeTab === 'absence'" :user="user" :userData="userData" :editData="editTargetData" @close="handleFormClose" @submitted="handleFormClose" />
         <div v-if="activeTab === 'trip_app'" class="card placeholder"><Send class="icon-lg text-blue-200" /><h2>체험학습 신청서</h2><p>준비 중입니다.</p></div>
         <div v-if="activeTab === 'trip_report'" class="card placeholder"><BookOpen class="icon-lg text-green-200" /><h2>체험학습 보고서</h2><p>준비 중입니다.</p></div>
       </template>
 
-      <ClassDocumentManager 
-        v-if="activeTab === 'class_docs' && safeRole === 'teacher'"
-        :teacherData="userData"
-      />
+      <template v-if="safeRole === 'teacher'">
+        <StudentManager v-if="activeTab === 'students'" :teacherData="userData" :user="user" />
+        <ClassDocumentManager v-if="activeTab === 'class_docs'" :teacherData="userData" :user="user" />
+        <TeacherSettings v-if="activeTab === 'settings'" :user="user" :userData="userData" />
+      </template>
+
     </main>
   </div>
 </template>
 
 <style scoped>
+/* 기존 스타일 */
 .dashboard-wrapper { min-height: 100vh; background-color: #f3f4f6; display: flex; flex-direction: column; }
 .navbar { background: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 .brand { display: flex; align-items: center; gap: 0.75rem; font-weight: 800; font-size: 1.25rem; color: #1f2937; cursor: pointer; }

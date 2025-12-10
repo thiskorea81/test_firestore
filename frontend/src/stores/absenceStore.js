@@ -2,23 +2,23 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db, getAppId } from '../firebase';
+import { useSystemStore } from './systemStore'; // 관리자 설정값(월 제한) 가져오기
 
 export const useAbsenceStore = defineStore('absence', () => {
   const submissions = ref([]);
   const loading = ref(false);
+  const systemStore = useSystemStore();
 
-  // DB에서 내 신청 내역 가져오기
   const fetchSubmissions = async (userId) => {
     if (!userId) return;
     loading.value = true;
     const appId = getAppId();
     
     try {
+      // 내 신청 내역 조회
       const q = query(
         collection(db, 'artifacts', appId, 'public', 'data', 'submissions'),
-        where('userId', '==', userId),
-        // '승인'된 것만 칠 것인지, '제출완료'도 칠 것인지 정책에 따라 다름.
-        // 여기서는 일단 모든 제출 내역을 기준으로 계산합니다.
+        where('userId', '==', userId)
       );
       
       const snapshot = await getDocs(q);
@@ -30,39 +30,35 @@ export const useAbsenceStore = defineStore('absence', () => {
     }
   };
 
-  // [계산 1] 이번 달 생리결석 사용 여부 (True: 사용가능, False: 이미씀)
+  // [계산 1] 이번 달 생리결석 사용 여부 (지각/조퇴/결과/결석 모두 포함)
   const isMenstrualAvailable = computed(() => {
+    // 관리자 설정 제한값 (기본 1회)
+    const limit = systemStore.config.limits.menstrual || 1;
+    
     const today = new Date();
-    const currentMonth = today.toISOString().slice(0, 7); // "2025-12"
+    const currentMonth = today.toISOString().slice(0, 7); // "YYYY-MM"
 
-    // 이번 달에 '생리결석'으로 제출된 문서가 있는지 확인
-    const used = submissions.value.some(sub => 
-      sub.absenceType === '생리결석' && 
+    // 이번 달에 '인정결석(생리통)'으로 신청된 건수 계산 (반려 제외)
+    const usedCount = submissions.value.filter(sub => 
+      sub.absenceType === '인정결석(생리통)' && 
       sub.period?.start?.startsWith(currentMonth) &&
-      sub.status !== '반려' // 반려된 건은 사용 안 한 것으로 간주
-    );
-    return !used;
+      sub.status !== '반려'
+    ).length;
+
+    return usedCount < limit; // 사용 횟수가 제한보다 적으면 true(사용가능)
   });
 
-  // [계산 2] 체험학습 사용 일수 (국내/국외)
-  // 가정: 체험학습 신청서는 type: '체험학습신청서', tripType: 'domestic' or 'overseas' 로 저장된다고 가정
+  // [계산 2] 체험학습 사용 일수
   const tripUsage = computed(() => {
     let domestic = 0;
     let overseas = 0;
 
     submissions.value.forEach(sub => {
-      if (sub.status === '반려') return; // 반려 제외
-
-      // type 체크 (체험학습신청서 양식이 구현되면 이 이름으로 저장해야 함)
+      if (sub.status === '반려') return;
       if (sub.type === '체험학습신청서' || sub.type === '체험학습신청') {
         const days = Number(sub.period?.days || 0);
-        
-        // tripType 필드가 있다고 가정 (없으면 국내로 기본 처리)
-        if (sub.tripType === 'overseas') {
-          overseas += days;
-        } else {
-          domestic += days;
-        }
+        if (sub.tripType === 'overseas') overseas += days;
+        else domestic += days;
       }
     });
 

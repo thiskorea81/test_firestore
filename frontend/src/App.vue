@@ -1,8 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db, getAppId } from './firebase';
+import { auth } from './firebase';
+import { useSystemStore } from './stores/systemStore'; // [추가]
 
 import LoadingSpinner from './components/LoadingSpinner.vue';
 import Dashboard from './components/Dashboard.vue';
@@ -11,35 +11,25 @@ import AdminDashboard from './components/admin/AdminDashboard.vue';
 
 const user = ref(null);
 const loading = ref(true);
-const userData = ref(null);
-const appId = getAppId();
+const store = useSystemStore();
+
+// store의 데이터를 computed로 연결
+const userData = computed(() => store.currentUserData);
 
 onMounted(() => {
   onAuthStateChanged(auth, async (currentUser) => {
     user.value = currentUser;
     
     if (currentUser) {
-      try {
-        // [중요] 경로 수정: users/{uid}
-        const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          userData.value = docSnap.data();
-        } else {
-          // 관리자 예외 처리 (필요시)
-          if (currentUser.email === 'admin@admin.com') {
-             userData.value = { name: '관리자', email: currentUser.email, role: 'admin' };
-          } else {
-             userData.value = { name: currentUser.displayName, email: currentUser.email, role: 'unknown' };
-          }
-        }
-      } catch (e) {
-        console.error("DB Load Error:", e);
-        userData.value = null;
+      // [수정] 스토어를 통해 데이터 로드
+      await store.fetchCurrentUser(currentUser.uid);
+      
+      // 관리자 예외 처리 (초기 설정용)
+      if (currentUser.email === 'admin@admin.com' && !store.currentUserData) {
+        store.currentUserData = { name: '관리자', email: currentUser.email, role: 'admin' };
       }
     } else {
-      userData.value = null;
+      store.currentUserData = null;
     }
     
     loading.value = false;

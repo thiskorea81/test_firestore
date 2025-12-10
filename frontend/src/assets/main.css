@@ -1,4 +1,5 @@
 /* src/assets/main.css */
+@import "tailwindcss";
 
 :root {
   --primary-color: #2563eb;       /* 밝은 파란색 */

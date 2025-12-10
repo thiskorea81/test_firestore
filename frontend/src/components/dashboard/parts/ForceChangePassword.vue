@@ -37,7 +37,7 @@ const handleChange = async () => {
       mustChangePassword: false
     });
 
-    alert("비밀번호가 안전하게 변경되었습니다.\n새 비밀번호로 다시 로그인해주세요.");
+    alert("비밀번호가 안전하게 변경되었습니다.\n회원정보를 수정해주세요.");
     window.location.reload(); 
   } catch (e) {
     console.error(e);

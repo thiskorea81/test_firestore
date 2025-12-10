@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Calendar, Upload, FileText, MessageSquare, Clock, CheckCircle2 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -7,7 +7,7 @@ const props = defineProps({
   startDate: String, endDate: String,
   startPeriod: String, endPeriod: String,
   absenceType: String,
-  absenceDetail: String, // [추가] 결석/조퇴/지각/결과 구분
+  absenceDetail: String, 
   reason: String, parentOpinion: String,
   proofDocType: String, proofDocDetail: String,
   fileInfo: Object
@@ -16,14 +16,14 @@ const props = defineProps({
 const emit = defineEmits([
   'update:startDate', 'update:endDate', 
   'update:startPeriod', 'update:endPeriod',
-  'update:absenceType', 
-  'update:absenceDetail', // [추가]
+  'update:absenceType', 'update:absenceDetail',
   'update:reason', 'update:parentOpinion',
   'update:proofDocType', 'update:proofDocDetail',
   'file-selected'
 ]);
 
 const fileInputRef = ref(null);
+const todayStr = new Date().toISOString().split('T')[0];
 
 const duration = computed(() => {
   if (!props.startDate || !props.endDate) return 0;
@@ -45,6 +45,33 @@ const handleTypeChange = (type) => {
     emit('update:reason', '');
   }
 };
+
+// [수정] 구분 변경 시 교시 자동 세팅 (조회/종례)
+const handleDetailChange = (detail) => {
+  emit('update:absenceDetail', detail);
+  
+  if (detail === '지각') {
+    // 지각: 조회 ~ N교시
+    emit('update:startPeriod', '조회');
+    emit('update:endPeriod', ''); 
+  } else if (detail === '조퇴') {
+    // 조퇴: N교시 ~ 종례
+    emit('update:startPeriod', '');
+    emit('update:endPeriod', '종례');
+  } else {
+    // 결석, 결과: 초기화
+    emit('update:startPeriod', '');
+    emit('update:endPeriod', '');
+  }
+};
+
+// 날짜 유효성 감지
+watch(() => props.startDate, (newStart) => {
+  if (newStart > props.endDate) emit('update:endDate', newStart);
+});
+watch(() => props.endDate, (newEnd) => {
+  if (newEnd < props.startDate) emit('update:startDate', newEnd);
+});
 </script>
 
 <template>
@@ -54,32 +81,33 @@ const handleTypeChange = (type) => {
       <label class="section-label"><Calendar class="w-4 h-4 mr-1"/> 결석 기간 및 구분</label>
       <div class="flex flex-col gap-3">
         <div class="date-row">
-          <input type="date" :value="startDate" @input="$emit('update:startDate', $event.target.value)" class="input-base" />
+          <input type="date" :value="startDate" :max="todayStr" @input="$emit('update:startDate', $event.target.value)" class="input-base" />
           <span class="tilde">~</span>
-          <input type="date" :value="endDate" @input="$emit('update:endDate', $event.target.value)" class="input-base" />
+          <input type="date" :value="endDate" :max="todayStr" @input="$emit('update:endDate', $event.target.value)" class="input-base" />
         </div>
         
         <div class="flex gap-4 p-2 bg-gray-50 rounded border border-gray-200 justify-center">
           <label class="flex items-center gap-1 cursor-pointer text-sm font-bold">
-            <input type="radio" :checked="absenceDetail === '결석'" @change="$emit('update:absenceDetail', '결석')"> 결석
+            <input type="radio" :checked="absenceDetail === '결석'" @change="handleDetailChange('결석')"> 결석
           </label>
           <label class="flex items-center gap-1 cursor-pointer text-sm font-bold">
-            <input type="radio" :checked="absenceDetail === '조퇴'" @change="$emit('update:absenceDetail', '조퇴')"> 조퇴
+            <input type="radio" :checked="absenceDetail === '조퇴'" @change="handleDetailChange('조퇴')"> 조퇴
           </label>
           <label class="flex items-center gap-1 cursor-pointer text-sm font-bold">
-            <input type="radio" :checked="absenceDetail === '지각'" @change="$emit('update:absenceDetail', '지각')"> 지각
+            <input type="radio" :checked="absenceDetail === '지각'" @change="handleDetailChange('지각')"> 지각
           </label>
           <label class="flex items-center gap-1 cursor-pointer text-sm font-bold">
-            <input type="radio" :checked="absenceDetail === '결과'" @change="$emit('update:absenceDetail', '결과')"> 결과
+            <input type="radio" :checked="absenceDetail === '결과'" @change="handleDetailChange('결과')"> 결과
           </label>
         </div>
 
         <div class="flex items-center gap-2 mt-1">
           <Clock class="w-4 h-4 text-gray-400"/>
-          <input type="number" :value="startPeriod" @input="$emit('update:startPeriod', $event.target.value)" placeholder="시작" class="input-base w-16 text-center"/>
-          <span>교시 ~</span>
-          <input type="number" :value="endPeriod" @input="$emit('update:endPeriod', $event.target.value)" placeholder="종료" class="input-base w-16 text-center"/>
-          <span>교시</span>
+          <input type="text" :value="startPeriod" @input="$emit('update:startPeriod', $event.target.value)" placeholder="시작" class="input-base w-16 text-center"
+            :readonly="absenceDetail === '지각'" :class="{'bg-gray-100': absenceDetail === '지각'}"/>
+          <span>~</span>
+          <input type="text" :value="endPeriod" @input="$emit('update:endPeriod', $event.target.value)" placeholder="종료" class="input-base w-16 text-center"
+            :readonly="absenceDetail === '조퇴'" :class="{'bg-gray-100': absenceDetail === '조퇴'}"/>
         </div>
 
         <p class="duration-text" v-if="duration > 0">
@@ -138,6 +166,7 @@ const handleTypeChange = (type) => {
 .section-label { display: flex; align-items: center; font-size: 0.9rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem; }
 .input-base { width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; }
 .input-base:focus { border-color: #2563eb; ring: 2px solid #93c5fd; }
+.input-base[readonly] { background-color: #f3f4f6; cursor: not-allowed; }
 .date-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
 .duration-text { font-size: 0.85rem; color: #2563eb; font-weight: 600; margin-top: 0.4rem; }
 .radio-group { display: flex; flex-wrap: wrap; gap: 10px; }

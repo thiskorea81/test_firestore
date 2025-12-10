@@ -13,13 +13,12 @@ const props = defineProps({ user: Object, userData: Object, editData: { type: Ob
 const emit = defineEmits(['close', 'submitted']);
 const systemStore = useSystemStore();
 
-// 데이터 초기화
 const startDate = ref(props.editData?.period?.start || new Date().toISOString().split('T')[0]);
 const endDate = ref(props.editData?.period?.end || new Date().toISOString().split('T')[0]);
 const startPeriod = ref(props.editData?.period?.startPeriod || '');
 const endPeriod = ref(props.editData?.period?.endPeriod || '');
 const absenceType = ref(props.editData?.absenceType || '질병결석');
-const absenceDetail = ref(props.editData?.absenceDetail || '결석'); // [추가] 기본값 결석
+const absenceDetail = ref(props.editData?.absenceDetail || '결석');
 const reason = ref(props.editData?.reason || '');
 const parentOpinion = ref(props.editData?.parentOpinion || '');
 const parentName = ref(props.userData?.parentName || '');
@@ -46,10 +45,28 @@ const duration = computed(() => {
   return Math.ceil(Math.abs(e - s) / (86400000)) + 1;
 });
 
-const checkMonthlyUsage = async () => { /* ... 기존 생리결석 체크 로직 동일 ... */ return false; };
+const checkMonthlyUsage = async () => {
+  const appId = getAppId();
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const q = query(
+    collection(db, 'artifacts', appId, 'public', 'data', 'submissions'),
+    where('userId', '==', props.user.uid),
+    where('absenceType', '==', '인정결석(생리통)')
+  );
+  const snapshot = await getDocs(q);
+  const count = snapshot.docs.filter(d => d.id !== props.editData?.id && d.data().period.start.startsWith(currentMonth)).length;
+  const limit = systemStore.config.limits.menstrual || 1;
+  return count >= limit; 
+};
 
 const handleSubmit = async () => {
   error.value = '';
+  
+  // [추가] 날짜 검증
+  const today = new Date().toISOString().split('T')[0];
+  if (startDate.value > today) return error.value = "신고서는 미리 작성할 수 없습니다.";
+  if (startDate.value > endDate.value) return error.value = "종료일이 시작일보다 빠를 수 없습니다.";
+
   if (!reason.value || !parentName.value) return error.value = "필수 정보를 모두 입력해주세요.";
   const sigs = sigSectionRef.value.getSignatures();
   if ((sigs.isStudentEmpty && !props.editData?.signatures?.studentSig) || (sigs.isParentEmpty && !props.editData?.signatures?.parentSig)) {
@@ -63,6 +80,16 @@ const handleSubmit = async () => {
   try {
     let finalType = absenceType.value;
     // ... 생리결석 로직 (기존 동일) ...
+    if (absenceType.value === '인정결석(생리통)') { 
+      const limit = systemStore.config.limits.menstrual || 1;
+      if (duration.value > limit) {
+        if (!confirm(`⚠️ 인정결석(생리통) 기간(${duration.value}일) 초과.\n'질병${absenceDetail.value}'으로 처리됩니다.`)) { isSubmitting.value = false; return; }
+        finalType = '질병결석';
+      } else if (await checkMonthlyUsage()) {
+        if (!confirm(`⚠️ 이번 달 인정결석(생리통) 한도 초과.\n'질병${absenceDetail.value}'으로 처리됩니다.`)) { isSubmitting.value = false; return; }
+        finalType = '질병결석';
+      }
+    }
 
     const appId = getAppId();
     let fileUrl = props.editData?.proofFileUrl || '';
@@ -79,9 +106,12 @@ const handleSubmit = async () => {
       grade: props.userData?.grade, class: props.userData?.class, number: props.userData?.number,
       phone: props.userData?.phone, parentPhone: props.userData?.parentPhone,
       
-      period: { start: startDate.value, end: endDate.value, days: duration.value, startPeriod: startPeriod.value, endPeriod: endPeriod.value },
+      period: { 
+        start: startDate.value, end: endDate.value, days: duration.value, 
+        startPeriod: startPeriod.value, endPeriod: endPeriod.value 
+      },
       absenceType: finalType,
-      absenceDetail: absenceDetail.value, // [저장]
+      absenceDetail: absenceDetail.value,
       reason: reason.value,
       parentOpinion: parentOpinion.value,
       proofFileUrl: fileUrl,
@@ -89,9 +119,9 @@ const handleSubmit = async () => {
       
       signatures: {
         studentName: props.userData?.name,
-        studentSig: sigs.isStudentEmpty ? props.editData?.signatures?.studentSig : sigs.student,
+        studentSig: (sigs.isStudentEmpty && props.editData?.signatures?.studentSig) ? props.editData.signatures.studentSig : sigs.student,
         parentName: parentName.value,
-        parentSig: sigs.isParentEmpty ? props.editData?.signatures?.parentSig : sigs.parent
+        parentSig: (sigs.isParentEmpty && props.editData?.signatures?.parentSig) ? props.editData.signatures.parentSig : sigs.parent
       },
       status: '제출완료',
       submittedAt: props.editData?.submittedAt || Timestamp.now()

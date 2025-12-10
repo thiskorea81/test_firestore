@@ -4,13 +4,14 @@ import { collection, query, where, getDocs, doc as firestoreDoc, deleteDoc } fro
 import { db, getAppId } from '../../firebase';
 import { useSystemStore } from '../../stores/systemStore';
 import { Loader2 } from 'lucide-vue-next';
-import { printDocument } from '../../utils/printUtils'; // [추가] 유틸리티 임포트
+import { printDocument } from '../../utils/printUtils';
 
 import DocumentListTable from './DocumentListTable.vue';
 import DocumentReviewModal from './DocumentReviewModal.vue';
 
 const props = defineProps({
-  teacherData: { type: Object, required: true }
+  teacherData: { type: Object, required: true },
+  user: { type: Object, required: true } // [추가] 서명 저장용
 });
 
 const systemStore = useSystemStore();
@@ -34,21 +35,18 @@ const fetchDocuments = async () => {
     querySnapshot.forEach((doc) => docs.push({ id: doc.id, ...doc.data() }));
     docs.sort((a, b) => b.submittedAt.seconds - a.submittedAt.seconds);
     documents.value = docs;
-  } catch (e) { console.error(e); } 
+  } catch (err) { console.error(err); alert("데이터 로드 실패"); } 
   finally { loading.value = false; }
 };
 
 const handleDelete = async (docId) => {
-  if (!confirm("삭제하시겠습니까?")) return;
+  if (!confirm("정말 삭제하시겠습니까?")) return;
   try {
     await deleteDoc(firestoreDoc(db, 'artifacts', getAppId(), 'public', 'data', 'submissions', docId));
-    alert("삭제되었습니다.");
-    selectedDoc.value = null;
-    await fetchDocuments();
+    alert("삭제되었습니다."); selectedDoc.value = null; await fetchDocuments();
   } catch (e) { alert("삭제 실패"); }
 };
 
-// [수정] 유틸리티 함수 호출
 const handlePrint = (doc) => {
   printDocument(doc, props.teacherData, systemStore.config.approvalLine);
 };
@@ -74,12 +72,15 @@ onMounted(fetchDocuments);
         <button @click="fetchDocuments" class="refresh-btn">새로고침</button>
       </div>
     </div>
+
     <div v-if="loading" class="py-10 text-center"><Loader2 class="animate-spin mx-auto"/></div>
     <DocumentListTable v-else :documents="filteredDocs" :loading="loading" @select="doc => selectedDoc = doc" @delete="handleDelete" />
+    
     <DocumentReviewModal 
       v-if="selectedDoc" 
       :doc="selectedDoc" 
-      :teacherData="teacherData" 
+      :teacherData="teacherData"
+      :user="user"
       @close="selectedDoc = null" 
       @delete="handleDelete" 
       @update="fetchDocuments" 
@@ -89,7 +90,7 @@ onMounted(fetchDocuments);
 </template>
 
 <style scoped>
-/* 스타일 기존 동일 */
+/* 스타일 유지 */
 .manager-container { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
 .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .title { font-size: 1.25rem; font-weight: 800; color: #1f2937; }
