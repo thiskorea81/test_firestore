@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { doc, getDoc, setDoc, deleteDoc, writeBatch, collection, getDocs, updateDoc,
-         query, where, orderBy, addDoc
+import { 
+  doc, getDoc, setDoc, deleteDoc, writeBatch, collection, getDocs, updateDoc, 
+  query, where, orderBy, addDoc 
 } from 'firebase/firestore';
 import { db, getAppId } from '../firebase';
 
@@ -24,26 +25,23 @@ export const useSystemStore = defineStore('system', () => {
   const loading = ref(false);
   const userList = ref([]); 
   const consultations = ref([]);
+  // myExamResults 제거됨
   
-  // [신규] 현재 로그인한 사용자 정보 (App 전역 관리)
   const currentUserData = ref(null);
 
   // --- Actions ---
 
-  // [신규] 현재 사용자 정보 불러오기
   const fetchCurrentUser = async (uid) => {
     if (!uid) {
       currentUserData.value = null;
       return;
     }
     try {
-      // 1. users/{uid} 경로 조회
       const docRef = doc(db, 'artifacts', appId, 'users', uid);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         currentUserData.value = snap.data();
       } else {
-        // (예외) 관리자 계정 등 DB에 없는 경우
         currentUserData.value = { role: 'unknown' }; 
       }
     } catch (e) {
@@ -185,7 +183,6 @@ export const useSystemStore = defineStore('system', () => {
   };
 
   const fetchClassStudents = async (grade, cls) => {
-    // [보완] 필수 정보 누락 시 중단
     if (!grade || !cls) {
       userList.value = [];
       return;
@@ -229,10 +226,12 @@ export const useSystemStore = defineStore('system', () => {
     } catch (e) { alert("기록 실패"); }
   };
 
+  // uploadExamResults, fetchMyGrades 제거됨
+
   return {
-    config, loading, userList, consultations, currentUserData, // [추가됨]
+    config, loading, userList, consultations, currentUserData, 
     fetchConfig, saveConfig, bulkCreateUsers, fetchAllUsers, 
-    fetchCurrentUser, // [추가됨]
+    fetchCurrentUser, 
     deleteUser, resetUserPassword, bulkDeleteUsers, bulkArchiveUsers,
     fetchClassStudents, updateUser, fetchConsultations, addConsultation
   };
