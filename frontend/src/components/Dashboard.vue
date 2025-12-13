@@ -11,9 +11,11 @@ import AbsenceForm from './forms/AbsenceForm.vue';
 import StudentHistory from './dashboard/StudentHistory.vue';
 import ClassDocumentManager from './teacher/ClassDocumentManager.vue';
 import StudentManager from './teacher/StudentManager.vue';
-import TeacherSettings from './teacher/TeacherSettings.vue'; // [추가]
+import TeacherSettings from './teacher/TeacherSettings.vue'; 
 import ForceChangePassword from './dashboard/parts/ForceChangePassword.vue';
 import EditProfileModal from './dashboard/parts/EditProfileModal.vue';
+// [신규] 성적 조회 컴포넌트
+import MyGrade from './grade/MyGrade.vue';
 
 const props = defineProps({
   user: { type: Object, required: true },
@@ -67,6 +69,9 @@ const handleFormClose = () => {
       <template v-if="safeRole !== 'teacher'">
         <StudentHistory v-if="activeTab === 'history'" :user="user" @edit="handleEditRequest" />
         <AbsenceForm v-if="activeTab === 'absence'" :user="user" :userData="userData" :editData="editTargetData" @close="handleFormClose" @submitted="handleFormClose" />
+        
+        <MyGrade v-if="activeTab === 'grades'" :user="user" :userData="userData" />
+        
         <div v-if="activeTab === 'trip_app'" class="card placeholder"><Send class="icon-lg text-blue-200" /><h2>체험학습 신청서</h2><p>준비 중입니다.</p></div>
         <div v-if="activeTab === 'trip_report'" class="card placeholder"><BookOpen class="icon-lg text-green-200" /><h2>체험학습 보고서</h2><p>준비 중입니다.</p></div>
       </template>

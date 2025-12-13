@@ -1,6 +1,6 @@
 <script setup>
 import { 
-  FileText, Send, ClipboardList, BookOpen, CheckCircle, List, Users, Settings 
+  FileText, Send, ClipboardList, BookOpen, CheckCircle, List, Users, Settings, Trophy 
 } from 'lucide-vue-next';
 
 defineProps({
@@ -21,6 +21,9 @@ defineEmits(['update:activeTab']);
     <template v-if="userRole !== 'teacher'">
       <button @click="$emit('update:activeTab', 'history')" :class="['tab-btn', activeTab === 'history' ? 'active' : '']">
         <List class="w-4 h-4 mr-1" /> 내 신청 현황
+      </button>
+      <button @click="$emit('update:activeTab', 'grades')" :class="['tab-btn', activeTab === 'grades' ? 'active' : '']">
+        <Trophy class="w-4 h-4 mr-1" /> 내 성적
       </button>
       <button @click="$emit('update:activeTab', 'absence')" :class="['tab-btn', activeTab === 'absence' ? 'active' : '']">
         <FileText class="w-4 h-4 mr-1" /> 결석신고서

@@ -1,18 +1,21 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useSystemStore } from '../../stores/systemStore';
-import { Users, RefreshCw, Trash2, Archive, Lock, Search, FileText, Upload, Loader2, AlertCircle, Settings } from 'lucide-vue-next';
+import { Users, RefreshCw, Lock, Search, FileText, Upload, Loader2, AlertCircle, Settings } from 'lucide-vue-next';
 import StudentDetailModal from './student/StudentDetailModal.vue';
-import EditProfileModal from '../dashboard/parts/EditProfileModal.vue'; // 정보 수정 모달 재사용
+import EditProfileModal from '../dashboard/parts/EditProfileModal.vue'; 
+// [신규] 성적 업로드 모달 임포트
+import GradeUploadModal from '../grade/GradeUploadModal.vue';
 
-const props = defineProps({ teacherData: Object, user: Object }); // user prop 추가 필요 (부모에서 전달)
+const props = defineProps({ teacherData: Object, user: Object });
 const store = useSystemStore();
 
 const activeTab = ref('list');
 const selectedIds = ref(new Set());
 const searchQuery = ref('');
 const selectedStudent = ref(null);
-const showEditProfile = ref(false); // 정보 수정 모달 상태
+const showEditProfile = ref(false); 
+const showGradeUploadModal = ref(false); // [신규] 모달 상태
 
 // [핵심] 담당 학급 설정 여부 확인
 const hasClassInfo = computed(() => {
@@ -20,7 +23,7 @@ const hasClassInfo = computed(() => {
 });
 
 const loadStudents = () => {
-  if (!hasClassInfo.value) return; // 정보 없으면 로드 안 함
+  if (!hasClassInfo.value) return; 
   store.fetchClassStudents(props.teacherData.assignedGrade, props.teacherData.assignedClass);
   store.fetchConfig();
 };
@@ -108,9 +111,15 @@ const handleResetPW = async (u) => { await store.resetUserPassword(u); loadStude
         <span v-if="hasClassInfo">{{ teacherData.assignedGrade }}학년 {{ teacherData.assignedClass }}반 학생 관리</span>
         <span v-else>학급 학생 관리</span>
       </h2>
-      <div class="flex bg-gray-100 p-1 rounded-lg">
-        <button @click="activeTab='list'" :class="['px-4 py-2 rounded font-bold text-sm', activeTab==='list'?'bg-white shadow text-blue-600':'text-gray-500']">명단 관리</button>
-        <button @click="activeTab='upload'" :class="['px-4 py-2 rounded font-bold text-sm', activeTab==='upload'?'bg-white shadow text-blue-600':'text-gray-500']">일괄 등록</button>
+      <div class="flex gap-2">
+         <button v-if="hasClassInfo" @click="showGradeUploadModal = true" class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-bold text-sm shadow-sm">
+          <Upload class="w-4 h-4" /> 성적 업로드
+        </button>
+
+        <div class="flex bg-gray-100 p-1 rounded-lg">
+          <button @click="activeTab='list'" :class="['px-4 py-2 rounded font-bold text-sm', activeTab==='list'?'bg-white shadow text-blue-600':'text-gray-500']">명단 관리</button>
+          <button @click="activeTab='upload'" :class="['px-4 py-2 rounded font-bold text-sm', activeTab==='upload'?'bg-white shadow text-blue-600':'text-gray-500']">일괄 등록</button>
+        </div>
       </div>
     </div>
 
@@ -177,12 +186,8 @@ const handleResetPW = async (u) => { await store.resetUserPassword(u); loadStude
     </div>
 
     <div v-else class="p-4 border rounded bg-gray-50">
-      <h4 class="font-bold mb-4 flex items-center text-gray-800"><Upload class="w-5 h-5 mr-2"/> 학생 일괄 등록</h4>
-      <div class="bg-white p-4 rounded border border-blue-200 mb-4 shadow-sm text-xs text-gray-600">
-        <span class="font-bold text-blue-700">입력 형식:</span> 번호, 이름, 성별 (이메일은 자동생성)<br>
-        <div class="bg-gray-100 p-2 mt-2 rounded font-mono border">01, 김철수, 남</div>
-      </div>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <h4 class="font-bold mb-4 flex items-center text-gray-800"><Upload class="w-5 h-5 mr-2"/> 학생 일괄 등록</h4>
+       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="flex flex-col gap-3">
           <textarea v-model="manualInputText" rows="12" class="w-full p-3 border rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none" placeholder="붙여넣기..."></textarea>
           <div class="flex items-center gap-2"><span class="text-xs text-gray-500 font-bold">파일:</span><input type="file" ref="csvInput" @change="handleFileUpload" accept=".csv" class="text-xs"/></div>
@@ -208,5 +213,13 @@ const handleResetPW = async (u) => { await store.resetUserPassword(u); loadStude
 
     <StudentDetailModal v-if="selectedStudent" :student="selectedStudent" @close="selectedStudent = null" @update="loadStudents" />
     <EditProfileModal v-if="showEditProfile" :user="user" :userData="teacherData" safeRole="teacher" @close="showEditProfile = false" />
+    
+    <GradeUploadModal 
+      v-if="showGradeUploadModal"
+      :isOpen="showGradeUploadModal"
+      :grade="teacherData.assignedGrade"
+      :classNum="teacherData.assignedClass"
+      @close="showGradeUploadModal = false"
+    />
   </div>
 </template>
